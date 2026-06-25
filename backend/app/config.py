@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from functools import lru_cache
 
 
@@ -19,42 +20,35 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
-    # Kafka
-    kafka_bootstrap_servers: str = "localhost:9092"
-    kafka_topic_events: str = "integration-events"
-    kafka_topic_webhooks: str = "webhook-raw"
-    kafka_topic_backfill: str = "backfill-jobs"
-    kafka_consumer_group: str = "enterprise-workers"
-
-    # Microsoft Entra ID
+    # Microsoft Entra ID (SSO)
     entra_tenant_id: str
     entra_client_id: str
     entra_client_secret: str
 
-    # GitHub App
-    github_app_id: str
-    github_app_private_key: str   # base64-encoded PEM
-    github_webhook_secret: str
+    # GitHub — personal access token with read:org + repo scopes
+    github_token: str = ""
+    github_org: str = ""
 
-    # Jira OAuth 2.0 (3LO)
-    jira_client_id: str
-    jira_client_secret: str
-    jira_auth_url: str = "https://auth.atlassian.com/authorize"
-    jira_token_url: str = "https://auth.atlassian.com/oauth/token"
-    jira_redirect_uri: str = "http://localhost:8001/api/v1/admin/integrations/jira/callback"
+    # GitLab — personal access token with read_api scope
+    gitlab_token: str = ""
+    gitlab_url: str = "https://gitlab.com"  # change for self-hosted
+
+    # Jira — service account with read access across the org
+    jira_base_url: str = ""   # e.g. https://yourcompany.atlassian.net
+    jira_email: str = ""      # service account email
+    jira_api_token: str = ""  # API token from id.atlassian.com/manage-profile/security/api-tokens
 
     # Teams / Graph API (reuses Entra credentials)
-    teams_client_id: str
-    teams_client_secret: str
-    teams_redirect_uri: str = "http://localhost:8001/api/v1/admin/integrations/teams/callback"
+    teams_client_id: str = ""
+    teams_client_secret: str = ""
 
-    # Rate limiting budgets (requests/hour per integration per tenant)
-    github_rt_budget: int = 1000
-    github_sync_budget: int = 1500
-    github_backfill_budget: int = 2000
-
-    # Token refresh safety margin (seconds before expiry to refresh)
-    token_refresh_margin_seconds: int = 900  # 15 minutes
+    @model_validator(mode="after")
+    def _fill_teams_from_entra(self) -> "Settings":
+        if not self.teams_client_id:
+            self.teams_client_id = self.entra_client_id
+        if not self.teams_client_secret:
+            self.teams_client_secret = self.entra_client_secret
+        return self
 
     class Config:
         env_file = ".env"

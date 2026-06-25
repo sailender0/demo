@@ -2,12 +2,15 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/Login";
-import { AdminDashboard } from "./pages/admin/Dashboard";
-import { IntegrationsPage } from "./pages/admin/Integrations";
-import { IdentityPage } from "./pages/admin/Identity";
-import { SyncHealthPage } from "./pages/admin/SyncHealth";
-import { UsersPage } from "./pages/admin/Users";
-import { EmployeeDashboard } from "./pages/employee/Dashboard";
+import { Overview } from "./pages/Overview";
+import { MyDayPage } from "./pages/MyDay";
+import { DigestPage } from "./pages/Digest";
+import { AskAIPage } from "./pages/AskAI";
+import { GitHubPage } from "./pages/apps/GitHub";
+import { GitLabPage } from "./pages/apps/GitLab";
+import { JiraPage } from "./pages/apps/Jira";
+import { TeamsPage } from "./pages/apps/Teams";
+import { HelpPage } from "./pages/Help";
 
 function AuthSuccess() {
   const params = new URLSearchParams(window.location.search);
@@ -21,8 +24,14 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--bg)" }}
+      >
+        <div
+          className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: "var(--accent)" }}
+        />
       </div>
     );
   }
@@ -37,28 +46,19 @@ function AppRoutes() {
     );
   }
 
-  const isAdmin = user.role === "admin";
-
   return (
     <Layout user={user} onLogout={logout}>
       <Routes>
-        <Route path="/" element={<Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />} />
+        <Route path="/" element={<Overview />} />
+        <Route path="/my-day" element={<MyDayPage />} />
+        <Route path="/digest" element={<DigestPage />} />
+        <Route path="/ask-ai" element={<AskAIPage />} />
+        <Route path="/apps/github" element={<GitHubPage />} />
+        <Route path="/apps/gitlab" element={<GitLabPage />} />
+        <Route path="/apps/jira" element={<JiraPage />} />
+        <Route path="/apps/teams" element={<TeamsPage />} />
+        <Route path="/help" element={<HelpPage />} />
         <Route path="/auth/success" element={<AuthSuccess />} />
-
-        {/* Admin routes */}
-        {isAdmin && (
-          <>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/integrations" element={<IntegrationsPage />} />
-            <Route path="/admin/identity" element={<IdentityPage />} />
-            <Route path="/admin/sync" element={<SyncHealthPage />} />
-            <Route path="/admin/users" element={<UsersPage />} />
-          </>
-        )}
-
-        {/* Employee routes */}
-        <Route path="/dashboard" element={<EmployeeDashboard />} />
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

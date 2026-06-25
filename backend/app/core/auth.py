@@ -41,7 +41,8 @@ async def exchange_entra_code(code: str, redirect_uri: str) -> dict:
                 "scope": "openid profile email User.Read",
             },
         )
-        resp.raise_for_status()
+        if resp.status_code != 200:
+            raise RuntimeError(f"Entra token exchange failed [{resp.status_code}]: {resp.text}")
         return resp.json()
 
 
@@ -75,13 +76,3 @@ async def get_current_user(
     return user
 
 
-async def require_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role not in ("admin",):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-    return user
-
-
-async def require_manager(user: User = Depends(get_current_user)) -> User:
-    if user.role not in ("admin", "manager", "hr"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Manager access required")
-    return user

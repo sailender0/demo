@@ -1,7 +1,6 @@
 import uuid
 import httpx
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.config import get_settings
@@ -11,57 +10,45 @@ from app.services.token_lifecycle import store_token, get_token
 settings = get_settings()
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-TEAMS_SCOPES = [
-    "https://graph.microsoft.com/User.Read.All",
-    "https://graph.microsoft.com/Calendars.Read",
-    "https://graph.microsoft.com/OnlineMeetings.Read.All",
-    "https://graph.microsoft.com/Presence.Read.All",
-    "https://graph.microsoft.com/Team.ReadBasic.All",
-    "offline_access",
-]
+_TOKEN_URL = f"https://login.microsoftonline.com/{settings.entra_tenant_id}/oauth2/v2.0/token"
 
 
-def build_teams_consent_url(state: str) -> str:
-    token_url = f"https://login.microsoftonline.com/{settings.entra_tenant_id}/oauth2/v2.0/authorize"
-    params = {
-        "client_id": settings.teams_client_id,
-        "response_type": "code",
-        "redirect_uri": settings.teams_redirect_uri,
-        "scope": " ".join(TEAMS_SCOPES),
-        "state": state,
-        "prompt": "admin_consent",  # Force admin consent flow
-    }
-    return f"{token_url}?{urlencode(params)}"
-
-
-async def exchange_teams_code(
-    db: AsyncSession,
-    tenant_id: uuid.UUID,
-    code: str,
-) -> IntegrationConfig:
-    token_url = f"https://login.microsoftonline.com/{settings.entra_tenant_id}/oauth2/v2.0/token"
+async def _fetch_client_credentials_token() -> tuple[str, datetime]:
+    """
+    Client Credentials flow — app authenticates as itself, no user interaction.
+    Requires Application permissions granted in Azure Portal (admin consent once).
+    """
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            token_url,
+            _TOKEN_URL,
             data={
+                "grant_type": "client_credentials",
                 "client_id": settings.teams_client_id,
                 "client_secret": settings.teams_client_secret,
-                "code": code,
-                "redirect_uri": settings.teams_redirect_uri,
-                "grant_type": "authorization_code",
-                "scope": " ".join(TEAMS_SCOPES),
+                "scope": "https://graph.microsoft.com/.default",
             },
         )
         resp.raise_for_status()
         data = resp.json()
 
-    await store_token(
-        db, tenant_id, "teams", "access",
-        data["access_token"],
-        data.get("refresh_token"),
-        expires_at=datetime.utcnow() + timedelta(seconds=data.get("expires_in", 3600)),
-    )
+    expires_at = datetime.utcnow() + timedelta(seconds=data.get("expires_in", 3600))
+    return data["access_token"], expires_at
 
+
+async def ensure_teams_token(db: AsyncSession, tenant_id: uuid.UUID) -> str:
+    """
+    Returns a valid Graph API token, fetching a new one via client credentials
+    if the stored token is missing or expired. No user action needed.
+    """
+    token = await get_token(db, tenant_id, "teams", "access")
+    if token:
+        return token
+
+    # Fetch fresh token via client credentials
+    access_token, expires_at = await _fetch_client_credentials_token()
+    await store_token(db, tenant_id, "teams", "access", access_token, expires_at=expires_at)
+
+    # Upsert IntegrationConfig so the app shows as connected
     result = await db.execute(
         select(IntegrationConfig).where(
             and_(
@@ -74,17 +61,15 @@ async def exchange_teams_code(
     if not config:
         config = IntegrationConfig(tenant_id=tenant_id, integration_type="teams")
         db.add(config)
-
     config.status = "connected"
-    config.config_data = {"tenant_id": settings.entra_tenant_id}
+    config.config_data = {"method": "client_credentials"}
     await db.flush()
-    return config
+
+    return access_token
 
 
 async def get_graph_client(db: AsyncSession, tenant_id: uuid.UUID) -> httpx.AsyncClient:
-    token = await get_token(db, tenant_id, "teams", "access")
-    if not token:
-        raise RuntimeError(f"No valid Teams token for tenant {tenant_id}")
+    token = await ensure_teams_token(db, tenant_id)
     return httpx.AsyncClient(
         base_url=GRAPH_BASE,
         headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},

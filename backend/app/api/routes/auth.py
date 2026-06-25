@@ -15,6 +15,7 @@ from app.core.auth import (
 )
 from app.models.user import User
 from app.models.tenant import Tenant
+from app.services.profile_service import get_connected_apps_details
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -28,7 +29,6 @@ class TokenResponse(BaseModel):
     user_id: str
     email: str
     name: str
-    role: str
 
 
 @router.get("/login")
@@ -55,8 +55,8 @@ async def auth_callback(
     """Handle Entra ID OAuth callback, issue internal JWT."""
     try:
         token_data = await exchange_entra_code(code, _REDIRECT_URI)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Failed to exchange authorization code")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     user_info = await get_entra_user_info(token_data["access_token"])
 
@@ -89,7 +89,7 @@ async def auth_callback(
         db.add(user)
         await db.flush()
 
-    jwt_token = create_access_token({"sub": str(user.id), "tenant_id": str(tenant.id), "role": user.role})
+    jwt_token = create_access_token({"sub": str(user.id), "tenant_id": str(tenant.id)})
 
     return RedirectResponse(
         f"{settings.frontend_url}/auth/success?token={jwt_token}"
@@ -102,11 +102,35 @@ async def get_me(user: User = Depends(get_current_user)):
         "id": str(user.id),
         "email": user.email,
         "name": user.name,
-        "role": user.role,
         "department": user.department,
         "job_title": user.job_title,
         "employee_type": user.employee_type,
         "tenant_id": str(user.tenant_id),
+    }
+
+
+@router.get("/me/profile", response_model=dict)
+async def get_my_profile(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Uses the SSO identity (email + Entra OID) to fetch full details from
+    every connected app via org-level tokens. No per-user OAuth needed.
+    """
+    apps = await get_connected_apps_details(
+        db, user.tenant_id, user.email, user.entra_oid
+    )
+    return {
+        "identity": {
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name,
+            "department": user.department,
+            "job_title": user.job_title,
+            "entra_oid": user.entra_oid,
+        },
+        "apps": apps,
     }
 
 

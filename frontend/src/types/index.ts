@@ -2,7 +2,6 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "manager" | "hr" | "employee";
   department: string | null;
   job_title: string | null;
   employee_type: "employee" | "contractor";

@@ -26,8 +26,8 @@ export function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 mb-4">
             <GitBranch className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white">Enterprise Platform</h1>
-          <p className="text-slate-400 mt-2 text-sm">Organization-level integration hub</p>
+          <h1 className="text-3xl font-bold text-white">My Workspace</h1>
+          <p className="text-slate-400 mt-2 text-sm">Your activity from GitHub, Jira and Teams — in one place</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-8 mb-6">
@@ -45,9 +45,9 @@ export function LoginPage() {
 
         <div className="grid grid-cols-3 gap-4 text-center">
           {[
-            { icon: Shield, label: "SSO only" },
-            { icon: Zap, label: "Zero setup" },
-            { icon: Users, label: "Team-wide" },
+            { icon: Shield, label: "SSO login" },
+            { icon: Zap, label: "No setup" },
+            { icon: Users, label: "Your data" },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="text-slate-400">
               <Icon className="w-5 h-5 mx-auto mb-1 text-blue-400" />

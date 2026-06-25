@@ -2,7 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── prevent theme flash ─── */
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+
+/* ─── light tokens ─── */
+:root {
+  --bg:          #f5f5f7;
+  --surface:     #ffffff;
+  --surface-2:   #f0f0f2;
+  --border:      #e4e4e7;
+  --border-2:    #d1d1d6;
+  --text:        #111111;
+  --text-2:      #555560;
+  --text-3:      #8888a0;
+  --accent:      #3b82f6;
+  --accent-soft: #eff6ff;
+
+  /* source colours */
+  --gh:    #f97316;   /* orange  */
+  --gh-bg: #fff7ed;
+  --jira:  #2563eb;   /* blue    */
+  --jira-bg: #eff6ff;
+  --teams: #7c3aed;   /* violet  */
+  --teams-bg: #f5f3ff;
+  --gl:    #e11d48;   /* rose    */
+  --gl-bg: #fff1f2;
+
+  --sidebar-w: 13rem;
+  --sidebar-collapsed: 3.5rem;
+  --radius: 0.75rem;
+  --shadow: 0 1px 3px 0 rgb(0 0 0/0.08), 0 1px 2px -1px rgb(0 0 0/0.06);
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0/0.10);
+}
+
+/* ─── dark tokens ─── */
+.dark {
+  --bg:          #0d0d0f;
+  --surface:     #18181b;
+  --surface-2:   #1f1f23;
+  --border:      #2a2a2f;
+  --border-2:    #3a3a3f;
+  --text:        #f0f0f4;
+  --text-2:      #a0a0b0;
+  --text-3:      #606070;
+  --accent:      #60a5fa;
+  --accent-soft: #172033;
+
+  --gh-bg:    #1a1008;
+  --jira-bg:  #0d1529;
+  --teams-bg: #130d24;
+  --gl-bg:    #1a060d;
+
+  --shadow: 0 1px 3px 0 rgb(0 0 0/0.4);
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0/0.5);
+}
+
+/* ─── global base ─── */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.15s, color 0.15s;
 }
+
+/* ─── scrollbar ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* ─── KPI card tilt ─── */
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), box-shadow 0.18s;
+  will-change: transform;
+}
+.tilt-card:hover { box-shadow: var(--shadow-md); }
+
+/* ─── pulse dot ─── */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
+.pulse-green { animation: pulse-ring 2s infinite; }
+
+/* ─── typing indicator ─── */
+@keyframes bounce-dot {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%           { transform: translateY(-5px); }
+}
+.dot-bounce span {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+  animation: bounce-dot 1.2s infinite;
+}
+.dot-bounce span:nth-child(2) { animation-delay: 0.15s; }
+.dot-bounce span:nth-child(3) { animation-delay: 0.30s; }
