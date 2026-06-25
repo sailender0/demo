@@ -36,3 +36,4 @@ app.include_router(auth_router, prefix=PREFIX)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+#test
